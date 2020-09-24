@@ -747,7 +747,7 @@ std::string OvmsWebServer::CfgInit3(PageEntry_t& p, PageContext_t& c, std::strin
   if (server.empty())
     server = MyConfig.GetParamValue("ota", "server");
   if (server.empty())
-    server = "api.openvehicles.com/firmware/ota";
+    server = "https://ovms.dexters-web.de/firmware/ota";
 
   MyOTA.GetStatus(info, true);
 
@@ -841,10 +841,10 @@ std::string OvmsWebServer::CfgInit3(PageEntry_t& p, PageContext_t& c, std::strin
   c.panel_start("primary", "Step 3/5: Update Firmware");
   c.form_start(p.uri);
   c.input_radio_start("Update server", "server");
+  c.input_radio_option("server", "Europe (dexters-web.de)",
+    "https://ovms.dexters-web.de/firmware/ota", server == "https://ovms.dexters-web.de/firmware/ota");
   c.input_radio_option("server", "Asia-Pacific (openvehicles.com)",
     "api.openvehicles.com/firmware/ota" , server == "api.openvehicles.com/firmware/ota");
-  c.input_radio_option("server", "Europe (dexters-web.de)",
-    "ovms.dexters-web.de/firmware/ota", server == "ovms.dexters-web.de/firmware/ota");
   c.input_radio_end();
   c.print(
     "<div class=\"form-group\">"

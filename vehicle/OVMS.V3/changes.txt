@@ -7,6 +7,7 @@ Open Vehicle Monitor System v3 - Change log
 - VW e-UP T26A: add climate control and charging detection
 - New vehicle: VW e-Up via OBD-II Port (VWUP.OBD)
 - New vehicle: MG ZS EV via OBD-II Port (MGEV)
+- Add support for TLS OTA updates and default to TLS (using Europe server due to certificate issues with Asia server)
 
 2020-09-02 MWJ  3.2.015  OTA release
 - Notify: add explicit channel exclusion config syntax
