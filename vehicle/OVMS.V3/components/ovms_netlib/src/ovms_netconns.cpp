@@ -73,6 +73,7 @@ OvmsNetTcpClient::~OvmsNetTcpClient()
   if (m_mgconn)
     {
     m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
+    m_mgconn->user_data = NULL;
     m_mgconn = NULL;
     m_netstate = NetConnIdle;
     }
@@ -110,7 +111,6 @@ void OvmsNetTcpClient::Mongoose(struct mg_connection *nc, int ev, void *ev_data)
       break;
     case MG_EV_RECV:
       {
-      ESP_LOGD(TAG, "OvmsNetTcpClient Incoming data (%d bytes)", nc->recv_mbuf.len);
       size_t removed = IncomingData(nc->recv_mbuf.buf, nc->recv_mbuf.len);
       if (removed > 0)
         {
@@ -131,11 +131,11 @@ bool OvmsNetTcpClient::Connect(std::string dest, struct mg_connect_opts opts)
 
   OvmsMutexLock mg(&m_mgconn_mutex);
   m_dest = dest;
+  opts.user_data = this;
   if ((m_mgconn = mg_connect_opt(mgr, dest.c_str(), OvmsMongooseWrapperCallback, opts)) == NULL)
     {
     return false;
     }
-  m_mgconn->user_data = this;
   m_netstate = NetConnConnecting;
   return true;
   }
@@ -145,6 +145,7 @@ void OvmsNetTcpClient::Disconnect()
   if (m_mgconn)
     {
     m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
+    m_mgconn->user_data = NULL;
     m_mgconn = NULL;
     m_netstate = NetConnIdle;
     }

@@ -178,7 +178,6 @@ size_t OvmsNetHttpAsyncClient::IncomingData(void *data, size_t length)
     if (toread > m_buf->FreeSpace()) toread=m_buf->FreeSpace();
     m_buf->Push((uint8_t*)data,toread);
     done += toread;
-    ESP_LOGD(TAG, "OvmsNetHttpAsyncClient Buffered %d/%d (%d remaining, %d used)", done, length, length-done, m_buf->UsedSpace());
 
     while ((m_httpstate == NetHttpHeaders)&&(m_buf->HasLine() >= 0))
       {
