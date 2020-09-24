@@ -95,7 +95,11 @@ bool OtaHttpClient::WaitForCompletion()
         }
       if (mgr)
         {
-        mg_mgr_poll(mgr, 250);
+        if (mg_mgr_poll(mgr, 250) == 0)
+          {
+          ESP_LOGE(TAG, "No interfaces available");
+          ConnectionFailed();
+          }
         }
       else
         {
