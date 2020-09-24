@@ -70,7 +70,6 @@ class OtaHttpClient : public OvmsNetHttpAsyncClient
 
 bool OtaHttpClient::WaitForCompletion()
   {
-    int start = monotonictime;
     mg_mgr* mgr = nullptr;
     // If we are being executed as part of the mongoose task we need to perform its task
     // for it, otherwise be become deadlocked.
@@ -88,11 +87,6 @@ bool OtaHttpClient::WaitForCompletion()
     while (GetState() != NetHttpState::NetHttpComplete &&
         GetState() != NetHttpState::NetHttpFailed)
       {
-      if (GetState() == NetHttpState::NetHttpConnecting && monotonictime - start > 10)
-        {
-        ESP_LOGE(TAG, "Timeout connecting");
-        break;
-        }
       if (mgr)
         {
         if (mg_mgr_poll(mgr, 250) == 0)
@@ -134,7 +128,7 @@ OtaChangelog::OtaChangelog(const std::string& url) :
     m_firstLine(),
     m_body()
   {
-  if (!Request(url))
+  if (!Request(url, "GET", 5.0))
     {
     ESP_LOGE(TAG, "Error making request to %s", url.c_str());
     ConnectionFailed();
@@ -201,7 +195,7 @@ OtaDownloader::OtaDownloader(const std::string& url, const esp_partition_t* targ
     m_read(0u),
     m_progress(0u)
   {
-  if (!Request(url))
+  if (!Request(url, "GET", 5.0))
     {
     ESP_LOGE(TAG, "Error making request to %s", url.c_str());
     ConnectionFailed();

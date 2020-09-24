@@ -72,8 +72,8 @@ OvmsNetTcpClient::~OvmsNetTcpClient()
   {
   if (m_mgconn)
     {
-    m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
     m_mgconn->user_data = NULL;
+    m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
     m_mgconn = NULL;
     m_netstate = NetConnIdle;
     }
@@ -85,6 +85,7 @@ void OvmsNetTcpClient::Mongoose(struct mg_connection *nc, int ev, void *ev_data)
     {
     case MG_EV_CONNECT:
       {
+      mg_set_timer(m_mgconn, 0);
       int *success = (int*)ev_data;
       if (*success == 0)
         {
@@ -102,6 +103,14 @@ void OvmsNetTcpClient::Mongoose(struct mg_connection *nc, int ev, void *ev_data)
         ConnectionFailed();
         }
       }
+      break;
+    case MG_EV_TIMER:
+      ESP_LOGD(TAG, "OvmsNetTcpClient Connection timeout");
+      m_mgconn->user_data = NULL;
+      m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
+      m_mgconn = NULL;
+      m_netstate = NetConnFailed;
+      ConnectionFailed();
       break;
     case MG_EV_CLOSE:
       ESP_LOGD(TAG, "OvmsNetTcpClient Connection closed");
@@ -124,7 +133,7 @@ void OvmsNetTcpClient::Mongoose(struct mg_connection *nc, int ev, void *ev_data)
     }
   }
 
-bool OvmsNetTcpClient::Connect(std::string dest, struct mg_connect_opts opts)
+bool OvmsNetTcpClient::Connect(std::string dest, struct mg_connect_opts opts, double timeout)
   {
   struct mg_mgr* mgr = MyNetManager.GetMongooseMgr();
   if (mgr == NULL) return false;
@@ -136,6 +145,10 @@ bool OvmsNetTcpClient::Connect(std::string dest, struct mg_connect_opts opts)
     {
     return false;
     }
+  if (timeout > 0.0)
+    {
+    mg_set_timer(m_mgconn, mg_time() + timeout);
+    }
   m_netstate = NetConnConnecting;
   return true;
   }
@@ -144,8 +157,8 @@ void OvmsNetTcpClient::Disconnect()
   {
   if (m_mgconn)
     {
-    m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
     m_mgconn->user_data = NULL;
+    m_mgconn->flags |= MG_F_CLOSE_IMMEDIATELY;
     m_mgconn = NULL;
     m_netstate = NetConnIdle;
     }
