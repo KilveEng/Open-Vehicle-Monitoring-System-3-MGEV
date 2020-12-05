@@ -41,7 +41,6 @@ void OvmsVehicleMgEv::IncomingDcdcPoll(uint16_t pid, uint8_t* data, uint8_t leng
     {
         case dcdcLvCurrentPid:
             // A massive guess that is probably very wrong
-            StandardMetrics.ms_v_env_charging12v->SetValue(value > 1);
             StandardMetrics.ms_v_bat_12v_current->SetValue(value + 1);
             break;
         case dcdcPowerLoadPid:

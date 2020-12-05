@@ -110,7 +110,7 @@ constexpr uint32_t UNLOCKED_CHARGING_TIMEOUT = 5u;
 constexpr uint16_t DIAG_ATTEMPTS = 3u;
 
 /// Threshold for 12v where we make the assumption that it is being charged
-constexpr float CHARGING_THRESHOLD = 12.8;
+constexpr float CHARGING_THRESHOLD = 13.0f;
 
 }  // anon namespace
 
@@ -370,6 +370,36 @@ void OvmsVehicleMgEv::AttemptDiagnostic()
 
 void OvmsVehicleMgEv::DeterminePollState(canbus* currentBus, bool wokenUp, uint32_t ticker)
 {
+    // Only poll while the 12v is charging, this is when the car is charging or when the
+    // car is on.  We also allow a little while after the charging is stopped to continue.
+    bool is12vCharging =
+        (StandardMetrics.ms_v_bat_12v_voltage->AsFloat() >= CHARGING_THRESHOLD);
+    if (StandardMetrics.ms_v_env_charging12v->AsBool() != is12vCharging)
+    {
+        StandardMetrics.ms_v_env_charging12v->SetValue(is12vCharging);
+    }
+    if (is12vCharging && currentBus == nullptr)
+    {
+        ESP_LOGD(TAG, "Battery charging, so allowing polling");
+        ConfigurePollInterface(CanInterface());
+    }
+    else if (!is12vCharging && currentBus != nullptr &&
+        monotonictime - StandardMetrics.ms_v_env_charging12v->LastModified() >= 30)
+    {
+        ESP_LOGD(TAG, "Battery stopped charging, turning off");
+        ConfigurePollInterface(0);
+        currentBus = nullptr;
+    }
+
+    // If there is no bus, then we are off
+    if (currentBus == nullptr)
+    {
+        m_wakeState = Off;
+        m_wakeTicker = monotonictime;
+        return;
+    }
+
+    // If there is a bus figure out our poll state
     if (StandardMetrics.ms_v_charge_inprogress->AsBool())
     {
         m_diagCount = 0u;
@@ -397,9 +427,6 @@ void OvmsVehicleMgEv::DeterminePollState(canbus* currentBus, bool wokenUp, uint3
         else if (StandardMetrics.ms_v_env_locked->AsBool())
         {
             PollSetState(PollStateLocked);
-            StandardMetrics.ms_v_env_charging12v->SetValue(
-                StandardMetrics.ms_v_bat_12v_voltage->AsFloat() >= CHARGING_THRESHOLD
-            );
         }
         else
         {
@@ -475,13 +502,8 @@ bool OvmsVehicleMgEv::SendKeepAliveTo(canbus* currentBus, uint16_t id)
 void OvmsVehicleMgEv::Ticker1(uint32_t ticker)
 {
     canbus* currentBus = m_poll_bus_default;
-    if (currentBus == nullptr)
-    {
-        // Polling is disabled, so there's nothing to do here
-        return;
-    }
 
-    if (m_wakeState == Tester)
+    if (m_wakeState == Tester && currentBus)
     {
         SendKeepAliveTo(currentBus, gwmId);
     }
@@ -492,7 +514,8 @@ void OvmsVehicleMgEv::Ticker1(uint32_t ticker)
 
     const auto previousState = m_poll_state;
     const auto previousWakeState = m_wakeState;
-    bool woken = HasWoken(currentBus, ticker);
+    bool woken = (currentBus == nullptr || HasWoken(currentBus, ticker));
+    // NOTE: currentBus should not be used past this point as it may have been turned off
     DeterminePollState(currentBus, woken, ticker);
     if (previousState != m_poll_state)
     {
@@ -576,15 +599,15 @@ void OvmsVehicleMgEv::ConfigurePollInterface(int bus)
 
 OvmsVehicle::vehicle_command_t OvmsVehicleMgEv::CommandWakeup()
 {
-    auto wakeBus = m_poll_bus_default;
-    if (m_wakeState == Off && wakeBus)
+    if (m_wakeState == Off)
     {
         // Reset the bus
         ConfigurePollInterface(0);
-        ConfigurePollInterface(wakeBus->m_busnumber + 1);
+        ConfigurePollInterface(CanInterface());
         m_rxPackets = 0u;
         m_wakeState = Waking;
     }
+    auto wakeBus = m_poll_bus_default;
     int counter = 0;
     while (counter < 40 && m_wakeState == Waking)
     {

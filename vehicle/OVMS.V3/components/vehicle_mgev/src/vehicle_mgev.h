@@ -59,6 +59,7 @@ class OvmsVehicleMgEv : public OvmsVehicle
 
   protected:
     void ConfigChanged(OvmsConfigParam* param) override;
+    int CanInterface();
 
     void IncomingPollReply(canbus* bus, uint16_t type, uint16_t pid, uint8_t* data, uint8_t length, uint16_t remain) override;
 

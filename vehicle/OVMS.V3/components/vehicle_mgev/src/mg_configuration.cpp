@@ -45,11 +45,6 @@ const char CAN_INTERFACE[] = "caninterface";
 // The default CAN bus to use (if you're using a standard cable)
 constexpr int DEFAULT_CAN = 1;
 
-int CanInterface()
-{
-    return MyConfig.GetParamValueInt(PARAM_NAME, CAN_INTERFACE, DEFAULT_CAN);
-}
-
 }  // anon namespace
 
 void OvmsVehicleMgEv::ConfigChanged(OvmsConfigParam* param)
@@ -61,11 +56,21 @@ void OvmsVehicleMgEv::ConfigChanged(OvmsConfigParam* param)
 
     ESP_LOGI(TAG, "MG EV reload configuration");
 
-    ConfigurePollInterface(CanInterface());
+    if (StandardMetrics.ms_v_env_charging12v->AsBool())
+    {
+        ConfigurePollInterface(CanInterface());
+    }
 }
 
-bool OvmsVehicleMgEv::SetFeature(int key, const char *value) {
-    switch (key) {
+int OvmsVehicleMgEv::CanInterface()
+{
+    return MyConfig.GetParamValueInt(PARAM_NAME, CAN_INTERFACE, DEFAULT_CAN);
+}
+
+bool OvmsVehicleMgEv::SetFeature(int key, const char *value)
+{
+    switch (key)
+    {
         case 10:
         {
             int bus = atoi(value);
@@ -82,7 +87,8 @@ bool OvmsVehicleMgEv::SetFeature(int key, const char *value) {
 }
 
 const std::string OvmsVehicleMgEv::GetFeature(int key) {
-    switch (key) {
+    switch (key)
+    {
         case 10:
         {
             int bus = MyConfig.GetParamValueInt(PARAM_NAME, CAN_INTERFACE, DEFAULT_CAN);
