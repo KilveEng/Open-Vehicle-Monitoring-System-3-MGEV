@@ -389,6 +389,7 @@ void OvmsVehicleMgEv::DeterminePollState(canbus* currentBus, bool wokenUp, uint3
         ESP_LOGD(TAG, "Battery stopped charging, turning off");
         ConfigurePollInterface(0);
         currentBus = nullptr;
+        StdMetrics.ms_v_env_awake->SetValue(false);
     }
 
     // If there is no bus, then we are off
